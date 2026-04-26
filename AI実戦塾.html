@@ -1,0 +1,1343 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI 実戦塾 — 8 週間で履歴書に書ける、企業向け Agent を作る</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+SC:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+  :root {
+    --ink: #1a2332;
+    --ink-soft: #2a3344;
+    --ink-faint: #6b7280;
+    --paper: #f5f3ee;
+    --paper-deep: #ece8df;
+    --rule: #d9d3c4;
+    --vermilion: #c8392f;
+  }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Noto Sans JP", "Helvetica Neue", Arial, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "palt" 1;
+    letter-spacing: 0.01em;
+  }
+
+  .serif {
+    font-family: "Noto Serif JP", "Noto Serif SC", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-feature-settings: "palt" 1;
+  }
+  body[data-lang="zh"] .serif {
+    font-family: "Noto Serif SC", "Noto Serif JP", "Songti SC", serif;
+  }
+  .sans { font-family: "Noto Sans JP", "Noto Sans SC", sans-serif; }
+  body[data-lang="zh"] .sans {
+    font-family: "Noto Sans SC", "Noto Sans JP", "PingFang SC", sans-serif;
+  }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+  /* Tighter Japanese / Chinese paragraph wrapping */
+  .ja-text {
+    line-break: strict;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    text-wrap: pretty;
+  }
+
+  .hairline { background: var(--rule); height: 1px; width: 100%; }
+  .hairline-v { background: var(--rule); width: 1px; }
+
+  /* Reveal */
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 900ms cubic-bezier(.2,.6,.2,1), transform 900ms cubic-bezier(.2,.6,.2,1);
+    will-change: opacity, transform;
+  }
+  .reveal.is-in { opacity: 1; transform: none; }
+  .reveal.delay-1 { transition-delay: 80ms; }
+  .reveal.delay-2 { transition-delay: 160ms; }
+  .reveal.delay-3 { transition-delay: 240ms; }
+  .reveal.delay-4 { transition-delay: 320ms; }
+  .reveal.delay-5 { transition-delay: 400ms; }
+
+  /* Language fade */
+  .lang-fade {
+    transition: opacity 260ms ease;
+  }
+  body.lang-switching .lang-fade {
+    opacity: 0;
+  }
+
+  ::selection { background: var(--ink); color: var(--paper); }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    background: var(--vermilion);
+    color: var(--paper);
+    padding: 1rem 2rem;
+    font-family: "Noto Sans JP", "Noto Sans SC", sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    border: 1px solid var(--vermilion);
+    transition: background 220ms ease, color 220ms ease;
+  }
+  .cta:hover { background: transparent; color: var(--vermilion); }
+  .cta .arrow { transition: transform 220ms ease; }
+  .cta:hover .arrow { transform: translateX(4px); }
+
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .topbar {
+    border-bottom: 1px solid var(--rule);
+    background: rgba(245, 243, 238, 0.92);
+    backdrop-filter: saturate(140%) blur(4px);
+  }
+
+  .lesson-dot {
+    width: 11px; height: 11px;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    transition: background 200ms ease;
+  }
+  .lesson-active .lesson-dot { background: var(--vermilion); border-color: var(--vermilion); }
+  .lesson-line { height: 1px; background: var(--rule); }
+
+  .icon-stroke { stroke: var(--ink); stroke-width: 1.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Image placeholder */
+  .img-ph {
+    background: var(--paper);
+    border: 1px dashed #c8c2b3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-faint);
+    font-family: "Noto Sans JP", "Noto Sans SC", sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+  }
+  .img-ph .ph-inner {
+    text-align: center;
+    line-height: 1.8;
+  }
+  .img-ph .ph-dim {
+    margin-top: 8px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: #b8b0a0;
+  }
+
+  /* Lang switch */
+  .lang-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "Noto Sans JP", "Noto Sans SC", sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+  }
+  .lang-switch button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: #9a9a9a;
+    font-weight: 400;
+    transition: color 220ms ease;
+    font-family: inherit;
+  }
+  .lang-switch button.active {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .lang-switch .sep {
+    color: #cfc9bb;
+    font-weight: 300;
+  }
+
+  @media (max-width: 768px) {
+    .desktop-timeline { display: none; }
+    .mobile-timeline { display: block; }
+  }
+  @media (min-width: 769px) {
+    .desktop-timeline { display: block; }
+    .mobile-timeline { display: none; }
+  }
+
+  .stat-num {
+    font-feature-settings: "palt" 0;
+    line-height: 0.95;
+  }
+</style>
+</head>
+<body data-lang="ja">
+  <div id="root"></div>
+
+  <script type="text/babel">
+  const { useEffect, useRef, useState, createContext, useContext, useCallback } = React;
+
+  /* ============================================================
+     I18N
+     ============================================================ */
+
+  const STR = {
+    nav: {
+      why:        { ja: "なぜ今",          zh: "为什么是现在" },
+      curriculum: { ja: "カリキュラム",     zh: "课程安排" },
+      scope:      { ja: "扱う / 扱わない",  zh: "覆盖 / 不覆盖" },
+      paths:      { ja: "進路",            zh: "进路" },
+      info:       { ja: "講座情報",         zh: "课程信息" },
+      cta:        { ja: "体験説明会",       zh: "体验说明会" },
+      tagline:    { ja: "TOKYO · 2026",   zh: "TOKYO · 2026" },
+    },
+
+    hero: {
+      eyebrow: { ja: "第 一 期 · 2026 年 春", zh: "第 一 期 · 2026 春" },
+      term:    { ja: "東京 · 8 週間",         zh: "东京 · 8 周" },
+
+      titleA1: { ja: "AI で ",                zh: "用 AI 修 " },
+      titleAccent: { ja: "ES",                zh: "ES" },
+      titleA2: { ja: " を磨く時代は",          zh: " 的时代" },
+      titleA3: { ja: "終わった。",             zh: "已经结束。" },
+      titleB1: { ja: "AI で「",                zh: "能用 AI 「" },
+      titleB2: { ja: "何かを作れる人」が、",    zh: "做出东西的人」," },
+      titleB3: { ja: "選ばれる。",              zh: "才被选中。" },
+
+      sub: {
+        ja: "AI 実戦塾 —— 8 週間で履歴書に書ける、企業向け Agent を作る。",
+        zh: "AI 实战塾 —— 8 周做出能写进履歴書的、面向企业的 Agent。",
+      },
+
+      stat1Cap: { ja: "2026 年卒の AI 利用率",                  zh: "2026 届毕业生 AI 使用率" },
+      stat1Src: { ja: "リクルート調査 / 2025",                  zh: "Recruit 调查 / 2025" },
+      stat2Cap: { ja: "ココナラ AI 代行カテゴリ前年比成長率",    zh: "Coconala AI 代办类目同比增长率" },
+      stat2Src: { ja: "ココナラ年次レポート / 2025",            zh: "Coconala 年报 / 2025" },
+      stat3Cap: { ja: "プロンプトエンジニア平均年収",            zh: "提示词工程师平均年收" },
+      stat3Src: { ja: "求人媒体集計 / 2025",                    zh: "求职媒体汇总 / 2025" },
+      manyen:   { ja: "万円",                                  zh: "万円" },
+
+      ctaApply: { ja: "体験説明会に申し込む",                   zh: "申请体验说明会" },
+      ctaMeta:  { ja: "所要 60 分 / オンライン or 都内会場",    zh: "所需 60 分钟 / 线上或东京会场" },
+    },
+
+    why: {
+      kanji: "壱",
+      en: "01",
+      label: { ja: "なぜ、今このコースなのか", zh: "为什么是现在这门课" },
+
+      lead: {
+        ja: <>2026 年の就活市場は変わった。<br/><span style={{color:"var(--ink)"}}>82.7%</span> の学生が AI で ES を書く時代、ES に AI 利用が見抜かれた瞬間、評価は下がる。ロート製薬は ES 選考を廃止し、Entry Meet 面談に切り替えた。</>,
+        zh: <>2026 年的就活市场已经变了。<br/><span style={{color:"var(--ink)"}}>82.7%</span> 的学生在用 AI 写 ES,ES 一旦被识别为 AI 生成,评价立刻下降。ロート製薬已经废止 ES 选考,改为 Entry Meet 面谈。</>,
+      },
+
+      bridge: {
+        ja: "企業が本当に欲しい人材は ——",
+        zh: "企业真正想要的人才是 ——",
+      },
+
+      headline: {
+        jaPre: "AI で「", zhPre: "能用 AI 「",
+        jaAcc: "何かを作れる", zhAcc: "做出东西",
+        jaPost: "」人。", zhPost: "」的人。",
+      },
+
+      tail: {
+        ja: <>具体的な業務を AI で解決し、作品があり、面談で語れる人。<br/>このタイプの学生は、2026 年現在ほとんど存在しない。インフラ(Claude Skills、Managed Agents)が成熟したのは半年前。<span style={{color:"var(--ink)",fontWeight:500}}>このコースは、その空白を狙う。</span></>,
+        zh: <>解决具体业务、有作品、面谈能讲出来的人。<br/>这种学生在 2026 年几乎不存在。支撑这件事的基础设施(Claude Skills、Managed Agents)半年前才成熟。<span style={{color:"var(--ink)",fontWeight:500}}>这门课就是要打这个空档。</span></>,
+      },
+
+      colA: { ja: "普通学生の履歴書",         zh: "普通学生的履歴書" },
+      colB: { ja: "本コース修了生の履歴書",   zh: "本课结业生的履歴書" },
+
+      colAItems: {
+        ja: ["AI を使った ES 推敲経験"],
+        zh: ["AI 辅助 ES 撰写经验"],
+      },
+
+      colBItems: {
+        ja: [
+          "Claude Skills を活用したカスタム AI Agent の設計と実装",
+          "MCP プロトコルを用いた外部データソース連携 Agent の構築",
+          "業界動向自動調査 Agent を構築。手動 3 日相当を 30 分で完了",
+          "業務要件を AI 実装可能な仕様に分解する設計力",
+        ],
+        zh: [
+          "使用 Claude Skills 设计与实装定制 AI Agent",
+          "基于 MCP 协议构建外部数据源连接 Agent",
+          "业界动向自动调研 Agent 构建。手动 3 天工作量在 30 分钟内完成",
+          "业务需求拆解为 AI 可实装规格的设计能力",
+        ],
+      },
+
+      ph1Title: { ja: "LINE 顧客対応 Bot UI", zh: "LINE 客户接待 Bot 界面" },
+    },
+
+    curriculum: {
+      kanji: "弐",
+      en: "02",
+      label: { ja: "8 週間のカリキュラム", zh: "8 周课程安排" },
+
+      intro: {
+        ja: <>一回 2 時間 × 8 回。<br/>「動くものを作る」と「就活に接続する」を、<br/>同時に走らせる。</>,
+        zh: <>每次 2 小时 × 共 8 次。<br/>「做出真能跑的东西」与「接入就活」,<br/>两条线同时推进。</>,
+      },
+
+      coreLabel:   { ja: "CORE",        zh: "CORE" },
+      lessonLabel: { ja: "第 {n} 課",    zh: "第 {n} 课" },
+      resumeLabel: { ja: "履歴書に書ける", zh: "可以写进履歴書" },
+
+      ph2Title: { ja: "第 1 課 産物 · 就活 AI アシスタント対話画面", zh: "第 1 课产物 · 就活 AI 助手对话界面" },
+    },
+
+    lessons: [
+      {
+        title: { ja: "獲得感 + 期待", zh: "获得感与期待" },
+        core:  { ja: "「AI で作れる」とは何か。8 週間の到達地点を体感する。",
+                 zh: "「能用 AI 做出来」到底是什么。亲身体验 8 周后的到达点。" },
+        resume: {
+          ja: ["AI Agent の概念と業務応用パターンを体系的に理解","自身の専攻・志望業界に応じた Agent テーマを定義"],
+          zh: ["体系化理解 AI Agent 的概念与业务应用模式","结合自身专业 / 目标行业定义 Agent 课题"],
+        },
+      },
+      {
+        title: { ja: "開発実戦(一)· Skill 加持", zh: "开发实战(一)· Skill 加持" },
+        core:  { ja: "Claude Skills を使い、最初の動く Agent を組み上げる。",
+                 zh: "用 Claude Skills 组装出第一个真正能跑的 Agent。" },
+        resume: {
+          ja: ["Claude Skills を活用したカスタム AI Agent の設計と実装","プロンプト設計と Skill 構成の基礎を習得"],
+          zh: ["使用 Claude Skills 设计与实装定制 AI Agent","掌握 Prompt 设计与 Skill 构造的基础"],
+        },
+      },
+      {
+        title: { ja: "応用と要件分解", zh: "应用与需求拆解" },
+        core:  { ja: "曖昧な業務課題を、AI が実行できる仕様に翻訳する。",
+                 zh: "把模糊的业务课题翻译成 AI 能执行的规格。" },
+        resume: {
+          ja: ["業務要件を AI 実装可能な仕様に分解する設計力","ステークホルダー視点での要件ヒアリングと優先順位付け"],
+          zh: ["将业务需求拆解为 AI 可实装规格的设计能力","站在干系人视角的需求访谈与优先级排序"],
+        },
+      },
+      {
+        title: { ja: "開発実戦(二)· 業務フロー", zh: "开发实战(二)· 业务流程" },
+        core:  { ja: "複数ステップの業務フローを Agent に落とし込む。",
+                 zh: "把多步骤业务流程落地到 Agent 里。" },
+        resume: {
+          ja: ["MCP プロトコルを用いた外部データソース連携 Agent の構築","条件分岐・エラー処理を含む業務フロー設計"],
+          zh: ["基于 MCP 协议构建外部数据源连接 Agent","包含条件分支与异常处理的业务流程设计"],
+        },
+      },
+      {
+        title: { ja: "開発実戦(三)· プロフェッショナル化", zh: "开发实战(三)· 专业感打磨" },
+        core:  { ja: "趣味レベルから、現場で使える品質へ。",
+                 zh: "从「玩具级」打磨到「现场可用」级。" },
+        resume: {
+          ja: ["業界動向自動調査 Agent を構築。手動 3 日相当を 30 分で完了","ログ・評価・改善サイクルを含む運用設計"],
+          zh: ["构建业界动向自动调研 Agent。手动 3 天工作量 30 分钟完成","包含日志 / 评估 / 改进循环的运维设计"],
+        },
+      },
+      {
+        title: { ja: "成果物の磨き込み", zh: "成果物的精修" },
+        core:  { ja: "Demo を、HR と経営者の両方に伝わる形に整える。",
+                 zh: "把 Demo 调整为 HR 和经营者都看得懂的样子。" },
+        resume: {
+          ja: ["技術成果を非エンジニア向けに翻訳する表現力","Demo 動画・ドキュメント・README の制作"],
+          zh: ["把技术成果翻译给非工程师的表达力","Demo 视频 / 文档 / README 的制作"],
+        },
+      },
+      {
+        title: { ja: "履歴書 + キャリア進路", zh: "履歴書 + 职业进阶" },
+        core:  { ja: "作ったものを、ES・面談・職務経歴書の言語に変換する。",
+                 zh: "把作品转译成 ES、面谈、职务经历书的语言。" },
+        resume: {
+          ja: ["成果物を就活言語へ翻訳した履歴書・職務経歴書の完成","面談で 3 分・10 分・30 分で語れる Demo ピッチを習得"],
+          zh: ["完成把成果物翻译为就活语言的履歴書 / 职务经历书","掌握面谈时 3 分 / 10 分 / 30 分版 Demo 讲述"],
+        },
+      },
+      {
+        title: { ja: "サロン式 Demo Day", zh: "沙龙式 Demo Day" },
+        core:  { ja: "招待企業 HR・採用担当者の前で成果を披露する。",
+                 zh: "在受邀企业 HR / 招聘负责人面前展示成果。" },
+        resume: {
+          ja: ["招待企業 HR を前にした Demo 発表経験","業界別 Agent ポートフォリオの最終提出"],
+          zh: ["面向受邀企业 HR 的 Demo 发表经验","按行业分类的 Agent 作品集最终提交"],
+        },
+      },
+    ],
+
+    caps: {
+      kanji: "参",
+      en: "03",
+      label: { ja: "身につく 5 つのコア能力", zh: "5 项核心能力" },
+      items: [
+        {
+          label: { ja: "AI 応用判断力", zh: "AI 应用判断力" },
+          desc:  { ja: "AI が「できること・できないこと・やる価値があること」を企業の業務から見抜く。",
+                   zh: "从企业业务里看出 AI「能做、不擅长、值得做」的部分。" },
+        },
+        {
+          label: { ja: "業務要件のエンジニアリング能力", zh: "业务需求工程化能力" },
+          desc:  { ja: "曖昧な「AI で何かしたい」を、AI が実行できる仕様に翻訳する。",
+                   zh: "把模糊的「想用 AI 做点什么」翻译成 AI 能执行的规格。" },
+        },
+        {
+          label: { ja: "AI Agent 設計と実装力", zh: "AI Agent 设计与实装力" },
+          desc:  { ja: "業務問題を解決する Agent を、ゼロから組み上げる。",
+                   zh: "从零开始组装一个解决业务问题的 Agent。" },
+        },
+        {
+          label: { ja: "成果可視化と価値表現力", zh: "成果可视化与价值表达力" },
+          desc:  { ja: "技術成果を、HR にも経営者にも伝わる形に仕上げる。",
+                   zh: "把技术成果做成 HR 与经营者都能看懂的样子。" },
+        },
+        {
+          label: { ja: "就活言語への翻訳力", zh: "就活语言转译力" },
+          desc:  { ja: "作ったものを履歴書・ES・面談で通用する日本語に変換する。",
+                   zh: "把作品翻译成履歴書 / ES / 面谈能用的日文表达。" },
+        },
+      ],
+    },
+
+    scope: {
+      kanji: "肆",
+      en: "04",
+      label:    { ja: "このコースの境界",       zh: "这门课的边界" },
+      sidekick: { ja: "— 私房菜 —",            zh: "— 私房菜 —" },
+      titlePre: { ja: "このコースの「",        zh: "这门课的「" },
+      titleAcc: { ja: "味",                   zh: "味道" },
+      titlePost:{ ja: "」",                   zh: "」" },
+      sub: {
+        ja: <>AI は広い世界。<br/>このコースは、その中の <span style={{color:"var(--ink)",fontWeight:500,borderBottom:"1px solid var(--vermilion)"}}>一品</span> を、深く作ります。</>,
+        zh: <>AI 是个广阔的世界。<br/>这门课只把其中的 <span style={{color:"var(--ink)",fontWeight:500,borderBottom:"1px solid var(--vermilion)"}}>一道菜</span> 做精做透。</>,
+      },
+      inLabel:  { ja: "コースで扱うもの",       zh: "这门课覆盖" },
+      outLabel: { ja: "コースで扱わないもの",   zh: "这门课不覆盖" },
+      inItems:  {
+        ja: ["Agent 設計と実装","Claude Skills の活用","企業業務シナリオへの落とし込み","成果物の作り方","就活への接続"],
+        zh: ["Agent 设计与实装","Claude Skills 活用","企业业务场景的实装落地","成果物的打磨","就活接口"],
+      },
+      outItems: {
+        ja: ["モデルファインチューニング","ベクトルデータベース構築","画像・動画生成","ゼロからのプログラミング"],
+        zh: ["模型微调","向量数据库构建","图像 / 视频生成","从零开始编程"],
+      },
+      footer: { ja: "他の方向は、別のコースでお応えします。", zh: "其他方向,我们另设课程响应。" },
+
+      ph3Title: { ja: "Agent ワークフロー概念図", zh: "Agent 工作流示意图" },
+    },
+
+    paths: {
+      kanji: "伍",
+      en: "05",
+      label: { ja: "3 つの進路", zh: "3 条进路" },
+
+      ph4Title: { ja: "受講生作品集 · Demo 9 グリッド", zh: "学员作品集 · Demo 九宫格" },
+
+      items: [
+        {
+          label:   { ja: "副業として収益化", zh: "副业变现" },
+          cap:     { ja: "ココナラ 2025 年 AI 代行カテゴリ前年比成長率",
+                     zh: "Coconala 2025 年 AI 代办类目同比增长率" },
+          tagline: { ja: "作品をそのまま受注に変える。",
+                     zh: "作品可以直接转化为接单收益。" },
+          kanji: "壱",
+        },
+        {
+          label:   { ja: "就活で勝ち抜く", zh: "就活突破" },
+          cap:     { ja: "プロンプトエンジニア平均年収", zh: "提示词工程师平均年收" },
+          tagline: { ja: "日本平均比 +71%。", zh: "比日本平均水平 +71%。" },
+          kanji: "弐",
+        },
+        {
+          label:   { ja: "社内 AI 推進者になる", zh: "公司内 AI 推进者" },
+          cap:     { ja: "2040 年 AI 関連人材不足見込み(経産省推計)",
+                     zh: "2040 年 AI 相关人才缺口预测(经产省)" },
+          tagline: { ja: "中小企業の AI 導入率 5–15%。落とし込める人が圧倒的に不足。",
+                     zh: "中小企业 AI 导入率 5-15%,能落地的人极度稀缺。" },
+          kanji: "参",
+        },
+      ],
+    },
+
+    info: {
+      kanji: "陸",
+      en: "06",
+      label: { ja: "講座情報", zh: "课程信息" },
+      rows: [
+        { en: "HOURS",       k: { ja: "課時",     zh: "课时" },     v: { ja: "8 回 × 2 時間 = 16 時間",            zh: "8 次课 × 2 小时 = 16 小时" } },
+        { en: "CLASS",       k: { ja: "クラス",   zh: "班级" },     v: { ja: "6–8 名 小規模クラス",                zh: "6–8 人小班" } },
+        { en: "TUITION",     k: { ja: "学費",     zh: "学费" },     v: { ja: "10〜18 万円",                        zh: "10〜18 万日元" } },
+        { en: "REQUIREMENT", k: { ja: "入学要件", zh: "入学门槛" }, v: { ja: "PC 日常使用ができれば OK。プログラミング経験不要", zh: "能日常使用 PC 即可。无需编程经验。" } },
+      ],
+    },
+
+    closing: {
+      kanji: "柒",
+      en: "07",
+      label: { ja: "今、入る理由", zh: "现在入学的理由" },
+      title: {
+        ja: <>今このタイミングだから、<br/><span style={{color:"var(--vermilion)"}}>意味がある。</span></>,
+        zh: <>正是现在,<br/><span style={{color:"var(--vermilion)"}}>才有意义。</span></>,
+      },
+      colALabel: { ja: "2026.04", zh: "2026.04" },
+      colA: {
+        ja: <>Managed Agents の公開ベータは <span className="tnum" style={{color:"var(--paper)"}}>2026 年 4 月</span>。<br/><span className="mono" style={{fontSize:"0.92em"}}>gh skill</span> CLI のリリースは <span className="tnum" style={{color:"var(--paper)"}}>4 月 16 日</span>。<br/>このインフラが成熟したのは、ほんの数ヶ月前。</>,
+        zh: <>Managed Agents 公测在 <span className="tnum" style={{color:"var(--paper)"}}>2026 年 4 月</span>。<br/><span className="mono" style={{fontSize:"0.92em"}}>gh skill</span> CLI 发布在 <span className="tnum" style={{color:"var(--paper)"}}>4 月 16 日</span>。<br/>支撑这件事的基础设施,几个月前才成熟。</>,
+      },
+      colBLabel: { ja: "OPPORTUNITY", zh: "OPPORTUNITY" },
+      colB: {
+        ja: <>つまり、<span className="tnum">2026 年 4–5 月</span>に入学した学員は、<br/>就活市場で「AI で何かを作れる」と言える、<br/><span style={{color:"var(--vermilion)",fontWeight:500}}>最も早い世代</span>になる。</>,
+        zh: <>也就是说,<span className="tnum">2026 年 4–5 月</span>入学的学员,<br/>将成为日本就活市场上,最早一批能说出<br/><span style={{color:"var(--vermilion)",fontWeight:500}}>「我能用 AI 做出东西」</span>的世代。</>,
+      },
+      nextStep: { ja: "NEXT STEP", zh: "NEXT STEP" },
+      cta:      { ja: <>まずは、60 分の<br className="md:hidden"/>体験説明会から。</>,
+                  zh: <>先从 60 分钟的<br className="md:hidden"/>体验说明会开始。</> },
+    },
+
+    footer: {
+      title:   { ja: "AI 実戦塾",       zh: "AI 实战塾" },
+      meta:    { ja: "TOKYO · EST. 2026", zh: "TOKYO · EST. 2026" },
+      copy:    {
+        ja: "© 2026 AI 実戦塾 · 在日中国留学生 / 日本本土学生 / 転職社会人向け",
+        zh: "© 2026 AI 实战塾 · 面向在日中国留学生 / 日本本土学生 / 转职社会人",
+      },
+    },
+
+    ph: {
+      pending: { ja: "画像準備中", zh: "图片准备中" },
+    },
+  };
+
+  /* ============================================================
+     LANG CONTEXT
+     ============================================================ */
+
+  const LangCtx = createContext({ lang: "ja", setLang: () => {} });
+  const useLang = () => useContext(LangCtx);
+
+  // pull a language-specific value
+  const T = (node, lang) => {
+    if (node == null) return null;
+    if (typeof node === "object" && (node.ja !== undefined || node.zh !== undefined)) {
+      return node[lang];
+    }
+    return node;
+  };
+
+  /* ============================================================
+     UTILITIES
+     ============================================================ */
+
+  function useReveal() {
+    const ref = useRef(null);
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-in");
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.18, rootMargin: "0px 0px -40px 0px" });
+      el.querySelectorAll(".reveal").forEach(n => io.observe(n));
+      return () => io.disconnect();
+    }, []);
+    return ref;
+  }
+
+  function CountUp({ to, decimals = 0, duration = 1400, suffix = "", prefix = "" }) {
+    const [val, setVal] = useState(0);
+    const ref = useRef(null);
+    const startedRef = useRef(false);
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting && !startedRef.current) {
+            startedRef.current = true;
+            const steps = 60;
+            const stepMs = duration / steps;
+            let i = 0;
+            const id = setInterval(() => {
+              i += 1;
+              const t = i / steps;
+              const eased = 1 - Math.pow(1 - t, 3);
+              setVal(to * eased);
+              if (i >= steps) { setVal(to); clearInterval(id); }
+            }, stepMs);
+            io.unobserve(el);
+          }
+        });
+      }, { threshold: 0.4 });
+      io.observe(el);
+      return () => io.disconnect();
+    }, [to, duration]);
+
+    const formatted = decimals === 0
+      ? Math.round(val).toLocaleString("ja-JP")
+      : val.toFixed(decimals);
+    return <span ref={ref} className="tnum stat-num">{prefix}{formatted}{suffix}</span>;
+  }
+
+  /* ============================================================
+     IMAGE PLACEHOLDER
+     ============================================================ */
+
+  function ImagePlaceholder({ width, height, label, dim, aspectClass }) {
+    const { lang } = useLang();
+    const pending = T(STR.ph.pending, lang);
+    return (
+      <div className={`img-ph ${aspectClass || ""}`} style={{ width: width ? `${width}px` : "100%", maxWidth: "100%", height: height ? `${height}px` : "auto", aspectRatio: width && height ? `${width} / ${height}` : undefined }}>
+        <div className="ph-inner lang-fade">
+          <div>{pending}</div>
+          {label && <div style={{ marginTop: 6, fontSize: 11, letterSpacing: "0.12em", color: "var(--ink-faint)" }}>{T(label, lang)}</div>}
+          {dim && <div className="ph-dim">{dim}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  function ProductImage({ src, label, alt, maxWidth, mono, contain, bg }) {
+    const { lang } = useLang();
+    return (
+      <figure style={{ maxWidth: maxWidth || "100%", margin: 0 }}>
+        <div style={{
+          background: bg || "var(--paper-deep)",
+          border: "1px solid var(--rule)",
+          padding: contain ? "0" : "0",
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <img
+            src={src}
+            alt={T(alt || label, lang) || ""}
+            loading="lazy"
+            style={{ display: "block", width: "100%", height: "auto", maxWidth: "100%" }}
+          />
+        </div>
+        {label && (
+          <figcaption className="lang-fade" style={{
+            marginTop: 12,
+            fontFamily: mono ? "JetBrains Mono, monospace" : "Noto Sans JP, Noto Sans SC, sans-serif",
+            fontSize: 11,
+            letterSpacing: "0.16em",
+            color: "var(--ink-faint)",
+            textAlign: "left",
+          }}>
+            <span className="mono" style={{ color: "var(--vermilion)", marginRight: 10 }}>FIG.</span>
+            {T(label, lang)}
+          </figcaption>
+        )}
+      </figure>
+    );
+  }
+
+  /* ============================================================
+     LANGUAGE SWITCH
+     ============================================================ */
+
+  function LangSwitch() {
+    const { lang, setLang } = useLang();
+    return (
+      <div className="lang-switch">
+        <button className={lang === "ja" ? "active" : ""} onClick={() => setLang("ja")}>日本語</button>
+        <span className="sep">/</span>
+        <button className={lang === "zh" ? "active" : ""} onClick={() => setLang("zh")}>中文</button>
+      </div>
+    );
+  }
+
+  /* ============================================================
+     TOPBAR
+     ============================================================ */
+
+  function TopBar() {
+    const { lang } = useLang();
+    return (
+      <div className="topbar fixed top-0 left-0 right-0 z-40">
+        <div className="max-w-[1240px] mx-auto px-6 md:px-12 h-14 flex items-center justify-between">
+          <div className="flex items-baseline gap-3 lang-fade">
+            <span className="serif text-[18px]" style={{ color: "var(--ink)" }}>{T(STR.footer.title, lang)}</span>
+            <span className="sans text-[10px] tracking-[0.2em] hidden sm:inline" style={{ color: "var(--ink-faint)" }}>{T(STR.nav.tagline, lang)}</span>
+          </div>
+          <div className="hidden lg:flex items-center gap-8 sans text-[12px] tracking-[0.12em] lang-fade" style={{ color: "var(--ink-soft)" }}>
+            <a href="#why" className="hover:opacity-60 transition-opacity">{T(STR.nav.why, lang)}</a>
+            <a href="#curriculum" className="hover:opacity-60 transition-opacity">{T(STR.nav.curriculum, lang)}</a>
+            <a href="#scope" className="hover:opacity-60 transition-opacity">{T(STR.nav.scope, lang)}</a>
+            <a href="#paths" className="hover:opacity-60 transition-opacity">{T(STR.nav.paths, lang)}</a>
+            <a href="#info" className="hover:opacity-60 transition-opacity">{T(STR.nav.info, lang)}</a>
+          </div>
+          <div className="flex items-center gap-6">
+            <LangSwitch />
+            <a href="#apply" className="sans text-[11px] tracking-[0.16em] border-b lang-fade hidden md:inline-block" style={{ color: "var(--vermilion)", borderColor: "var(--vermilion)" }}>
+              {T(STR.nav.cta, lang)}
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ============================================================
+     SECTION LABEL
+     ============================================================ */
+
+  function SectionLabel({ kanji, en, jp }) {
+    const { lang } = useLang();
+    return (
+      <div className="reveal flex items-baseline gap-6 flex-wrap">
+        <span className="serif" style={{ color: "var(--vermilion)", fontSize: "28px", lineHeight: 1, fontWeight: 500 }}>{kanji}</span>
+        <span className="mono text-[11px] tracking-[0.28em]" style={{ color: "var(--ink-faint)" }}>{en}</span>
+        <div className="hairline flex-1 max-w-[80px]" />
+        <span className="sans text-[12px] tracking-[0.16em] lang-fade" style={{ color: "var(--ink-soft)" }}>{T(jp, lang)}</span>
+      </div>
+    );
+  }
+
+  /* ============================================================
+     HERO
+     ============================================================ */
+
+  function Hero() {
+    const ref = useReveal();
+    const { lang } = useLang();
+    const h = STR.hero;
+    return (
+      <section ref={ref} className="pt-40 md:pt-48 pb-24 md:pb-32 px-6 md:px-12">
+        <div className="max-w-[1240px] mx-auto">
+
+          <div className="reveal flex items-center gap-4 mb-12 md:mb-16 lang-fade">
+            <span className="mono text-[11px] tracking-[0.3em]" style={{ color: "var(--ink-faint)" }}>{T(h.eyebrow, lang)}</span>
+            <div className="hairline flex-1 max-w-[120px]" />
+            <span className="sans text-[11px] tracking-[0.24em]" style={{ color: "var(--ink-faint)" }}>{T(h.term, lang)}</span>
+          </div>
+
+          <h1 className="reveal serif font-medium ja-text leading-[1.32] lang-fade"
+              style={{ color: "var(--ink)", fontSize: "clamp(34px, 5.8vw, 76px)", letterSpacing: "0.01em" }}>
+            {T(h.titleA1, lang)}<span style={{ color: "var(--vermilion)" }}>{T(h.titleAccent, lang)}</span>{T(h.titleA2, lang)}<br/>
+            {T(h.titleA3, lang)}<br/>
+            {T(h.titleB1, lang)}{T(h.titleB2, lang)}<br/>{T(h.titleB3, lang)}
+          </h1>
+
+          <p className="reveal delay-1 sans mt-10 md:mt-12 ja-text leading-[1.9] lang-fade"
+             style={{ color: "var(--ink-soft)", fontSize: "clamp(15px, 1.4vw, 19px)", maxWidth: "780px", fontWeight: 400 }}>
+            {T(h.sub, lang)}
+          </p>
+
+          <div className="reveal delay-2 mt-20 md:mt-28">
+            <div className="hairline mb-10" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
+              <StatBlock
+                num={<CountUp to={82.7} decimals={1} suffix="%" />}
+                caption={T(h.stat1Cap, lang)}
+                source={T(h.stat1Src, lang)}
+              />
+              <StatBlock
+                num={<CountUp to={394} suffix="%" />}
+                caption={T(h.stat2Cap, lang)}
+                source={T(h.stat2Src, lang)}
+              />
+              <StatBlock
+                num={<><CountUp to={818} /><span className="serif" style={{fontSize:"0.5em", marginLeft:"0.15em"}}>{T(h.manyen, lang)}</span></>}
+                caption={T(h.stat3Cap, lang)}
+                source={T(h.stat3Src, lang)}
+              />
+            </div>
+            <div className="hairline mt-10" />
+          </div>
+
+          <div className="reveal delay-3 mt-16 md:mt-20 flex flex-col md:flex-row items-start md:items-center gap-6 lang-fade">
+            <a href="#apply" className="cta sans">
+              {T(h.ctaApply, lang)}
+              <span className="arrow">→</span>
+            </a>
+            <span className="sans text-[12px] tracking-[0.12em]" style={{ color: "var(--ink-faint)" }}>
+              {T(h.ctaMeta, lang)}
+            </span>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function StatBlock({ num, caption, source }) {
+    return (
+      <div className="flex flex-col">
+        <div className="serif font-medium" style={{ color: "var(--ink)", fontSize: "clamp(40px, 5vw, 64px)", lineHeight: 0.95 }}>{num}</div>
+        <div className="sans mt-5 ja-text lang-fade" style={{ color: "var(--ink-soft)", fontSize: "13px", lineHeight: 1.7, letterSpacing: "0.02em" }}>{caption}</div>
+        <div className="mono mt-2 text-[10px] tracking-[0.16em] lang-fade" style={{ color: "var(--ink-faint)" }}>{source}</div>
+      </div>
+    );
+  }
+
+  /* ============================================================
+     WHY NOW
+     ============================================================ */
+
+  function WhyNow() {
+    const ref = useReveal();
+    const { lang } = useLang();
+    const w = STR.why;
+    return (
+      <section ref={ref} id="why" className="py-24 md:py-40 px-6 md:px-12" style={{ background: "var(--paper)" }}>
+        <div className="max-w-[1240px] mx-auto">
+
+          <SectionLabel kanji={w.kanji} en={w.en} jp={w.label} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 mt-16 md:mt-20">
+
+            <div className="lg:col-span-7">
+              <p className="reveal serif ja-text lang-fade" style={{ color: "var(--ink)", fontSize: "clamp(20px, 1.7vw, 26px)", lineHeight: 1.85, fontWeight: 400 }}>
+                {T(w.lead, lang)}
+              </p>
+
+              <div className="reveal delay-1 my-12 flex items-center gap-6">
+                <div className="hairline-v h-12" />
+                <p className="sans text-[12px] tracking-[0.18em] lang-fade" style={{ color: "var(--ink-faint)" }}>
+                  {T(w.bridge, lang)}
+                </p>
+              </div>
+
+              <p className="reveal delay-2 serif ja-text lang-fade" style={{ color: "var(--ink)", fontSize: "clamp(24px, 2.2vw, 34px)", lineHeight: 1.6, fontWeight: 500 }}>
+                {lang === "ja" ? w.headline.jaPre : w.headline.zhPre}
+                <span style={{ color: "var(--vermilion)" }}>{lang === "ja" ? w.headline.jaAcc : w.headline.zhAcc}</span>
+                {lang === "ja" ? w.headline.jaPost : w.headline.zhPost}
+              </p>
+
+              <p className="reveal delay-3 sans mt-8 ja-text lang-fade" style={{ color: "var(--ink-soft)", fontSize: "15px", lineHeight: 1.95 }}>
+                {T(w.tail, lang)}
+              </p>
+            </div>
+
+            <div className="lg:col-span-5 reveal delay-2">
+              <div className="grid grid-cols-1 gap-4">
+
+                <div className="p-7 md:p-8" style={{ background: "var(--paper-deep)", border: "1px solid var(--rule)" }}>
+                  <div className="flex items-center gap-3 mb-5">
+                    <span className="mono text-[10px] tracking-[0.24em]" style={{ color: "var(--ink-faint)" }}>A.</span>
+                    <span className="sans text-[12px] tracking-[0.14em] lang-fade" style={{ color: "var(--ink-faint)" }}>{T(w.colA, lang)}</span>
+                  </div>
+                  <ul className="sans space-y-2.5 lang-fade" style={{ color: "var(--ink-faint)", fontSize: "13px", lineHeight: 1.7 }}>
+                    {T(w.colAItems, lang).map((it, i) => (
+                      <li key={i} className="flex gap-2"><span>—</span><span>{it}</span></li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="p-7 md:p-8" style={{ background: "var(--ink)", border: "1px solid var(--ink)" }}>
+                  <div className="flex items-center gap-3 mb-5">
+                    <span className="mono text-[10px] tracking-[0.24em]" style={{ color: "var(--vermilion)" }}>B.</span>
+                    <span className="sans text-[12px] tracking-[0.14em] lang-fade" style={{ color: "rgba(245,243,238,0.7)" }}>{T(w.colB, lang)}</span>
+                  </div>
+                  <ul className="sans space-y-3.5 lang-fade" style={{ color: "var(--paper)", fontSize: "13.5px", lineHeight: 1.7 }}>
+                    {T(w.colBItems, lang).map((it, i) => (
+                      <li key={i} className="flex gap-3"><span style={{ color: "var(--vermilion)" }}>—</span><span>{it}</span></li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Image #1 — LINE bot */}
+                <div className="reveal delay-3 mt-6">
+                  <ProductImage
+                    src="images/line-bot.png"
+                    label={w.ph1Title}
+                    bg="#ece8df"
+                  />
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  /* ============================================================
+     CURRICULUM
+     ============================================================ */
+
+  function Curriculum() {
+    const [active, setActive] = useState(0);
+    const ref = useReveal();
+    const { lang } = useLang();
+    const c = STR.curriculum;
+    const lessons = STR.lessons;
+
+    return (
+      <section ref={ref} id="curriculum" className="py-24 md:py-40 px-6 md:px-12" style={{ background: "var(--paper-deep)" }}>
+        <div className="max-w-[1240px] mx-auto">
+
+          <SectionLabel kanji={c.kanji} en={c.en} jp={c.label} />
+
+          <div className="reveal delay-1 mt-16 md:mt-20">
+            <p className="serif ja-text lang-fade" style={{ color: "var(--ink)", fontSize: "clamp(22px, 2vw, 30px)", lineHeight: 1.7, maxWidth: "780px", fontWeight: 400 }}>
+              {T(c.intro, lang)}
+            </p>
+          </div>
+
+          {/* Desktop timeline */}
+          <div className="reveal delay-2 desktop-timeline mt-20">
+            <div className="grid grid-cols-8 gap-0 relative">
+              <div className="lesson-line absolute left-0 right-0" style={{ top: "5px" }}></div>
+              {lessons.map((l, i) => {
+                const isActive = i === active;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setActive(i)}
+                    className={`flex flex-col items-start text-left pt-0 pb-2 pr-3 transition-opacity ${isActive ? "lesson-active" : ""} ${!isActive ? "opacity-60 hover:opacity-100" : ""}`}
+                    style={{ background: "transparent", border: "none", cursor: "pointer" }}
+                  >
+                    <div className="lesson-dot rounded-full mb-5"></div>
+                    <div className="mono text-[10px] tracking-[0.18em] lang-fade" style={{ color: isActive ? "var(--vermilion)" : "var(--ink-faint)" }}>
+                      {T(c.lessonLabel, lang).replace("{n}", String(i + 1).padStart(2, "0"))}
+                    </div>
+                    <div className="serif mt-2 ja-text lang-fade" style={{ color: "var(--ink)", fontSize: "14px", lineHeight: 1.45, fontWeight: isActive ? 500 : 400 }}>
+                      {T(l.title, lang)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-16 pt-10" style={{ borderTop: "1px solid var(--rule)" }}>
+              <LessonDetail lesson={lessons[active]} c={c} />
+            </div>
+
+            {/* Image #2 — Lesson 1 product */}
+            <div className="reveal mt-20" style={{ maxWidth: 880, marginLeft: "auto", marginRight: "auto" }}>
+              <ProductImage
+                src="images/lesson1-shukatsu-ai.png"
+                label={c.ph2Title}
+              />
+            </div>
+          </div>
+
+          {/* Mobile timeline */}
+          <div className="mobile-timeline mt-12 reveal delay-2">
+            <div className="space-y-3">
+              {lessons.map((l, i) => {
+                const isOpen = i === active;
+                return (
+                  <div key={i} style={{ borderTop: i === 0 ? "1px solid var(--rule)" : "none", borderBottom: "1px solid var(--rule)" }}>
+                    <button
+                      onClick={() => setActive(isOpen ? -1 : i)}
+                      className="w-full flex items-center justify-between py-5 text-left"
+                      style={{ background: "transparent", border: "none" }}
+                    >
+                      <div className="flex items-baseline gap-4">
+                        <span className="mono text-[11px] tracking-[0.18em] lang-fade" style={{ color: isOpen ? "var(--vermilion)" : "var(--ink-faint)" }}>
+                          {T(c.lessonLabel, lang).replace("{n}", String(i + 1).padStart(2, "0"))}
+                        </span>
+                        <span className="serif ja-text lang-fade" style={{ color: "var(--ink)", fontSize: "16px", fontWeight: isOpen ? 500 : 400 }}>
+                          {T(l.title, lang)}
+                        </span>
+                      </div>
+                      <span className="sans text-[14px]" style={{ color: "var(--ink-faint)" }}>{isOpen ? "−" : "+"}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="pb-7 pt-2">
+                        <LessonDetail lesson={l} c={c} compact />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="reveal mt-12">
+              <ProductImage src="images/lesson1-shukatsu-ai.png" label={c.ph2Title} />
+            </div>
+          </div>
+
+        </div>
+      </section>
+    );
+  }
+
+  function LessonDetail({ lesson, c, compact }) {
+    const { lang } = useLang();
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 lang-fade">
+        <div className="lg:col-span-5">
+          <div className="mono text-[10px] tracking-[0.24em] mb-3" style={{ color: "var(--ink-faint)" }}>{T(c.coreLabel, lang)}</div>
+          <p className="serif ja-text" style={{ color: "var(--ink)", fontSize: compact ? "17px" : "22px", lineHeight: 1.65, fontWeight: 400 }}>
+            {T(lesson.core, lang)}
+          </p>
+        </div>
+        <div className="lg:col-span-7">
+          <div className="mono text-[10px] tracking-[0.24em] mb-3" style={{ color: "var(--ink-faint)" }}>{T(c.resumeLabel, lang)}</div>
+          <ul className="space-y-3">
+            {T(lesson.resume, lang).map((r, i) => (
+              <li key={i} className="flex gap-4 sans ja-text" style={{ color: "var(--ink-soft)", fontSize: "14px", lineHeight: 1.75 }}>
+                <span className="mono pt-0.5" style={{ color: "var(--vermilion)", fontSize: "10px" }}>0{i+1}</span>
+                <span>{r}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
+  /* ============================================================
+     CAPABILITIES
+     ============================================================ */
+
+  const CAP_ICONS = [
+    <svg viewBox="0 0 32 32" className="w-full h-full"><circle cx="16" cy="16" r="11" className="icon-stroke" /><path d="M16 8 v16 M8 16 h16" className="icon-stroke" /></svg>,
+    <svg viewBox="0 0 32 32" className="w-full h-full"><path d="M5 9 h22 M5 16 h22 M5 23 h14" className="icon-stroke" /></svg>,
+    <svg viewBox="0 0 32 32" className="w-full h-full"><rect x="6" y="6" width="9" height="9" className="icon-stroke" /><rect x="17" y="6" width="9" height="9" className="icon-stroke" /><rect x="6" y="17" width="9" height="9" className="icon-stroke" /><rect x="17" y="17" width="9" height="9" className="icon-stroke" /></svg>,
+    <svg viewBox="0 0 32 32" className="w-full h-full"><path d="M5 25 L12 17 L17 21 L27 9" className="icon-stroke" /><path d="M5 27 h22" className="icon-stroke" /></svg>,
+    <svg viewBox="0 0 32 32" className="w-full h-full"><path d="M6 8 h10 M11 8 v16 M6 24 h10" className="icon-stroke" /><path d="M19 12 h7 M19 18 h7 M19 24 h5" className="icon-stroke" /></svg>,
+  ];
+
+  function Capabilities() {
+    const ref = useReveal();
+    const { lang } = useLang();
+    const c = STR.caps;
+    return (
+      <section ref={ref} className="py-24 md:py-40 px-6 md:px-12" style={{ background: "var(--paper)" }}>
+        <div className="max-w-[1240px] mx-auto">
+          <SectionLabel kanji={c.kanji} en={c.en} jp={c.label} />
+
+          <div className="mt-16 md:mt-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-px" style={{ background: "var(--rule)", border: "1px solid var(--rule)" }}>
+            {c.items.map((it, i) => (
+              <div key={i} className="reveal p-7 md:p-8 flex flex-col" style={{ background: "var(--paper)", transitionDelay: `${i*80}ms` }}>
+                <div className="flex items-baseline justify-between mb-8">
+                  <span className="mono text-[10px] tracking-[0.24em]" style={{ color: "var(--ink-faint)" }}>0{i+1}</span>
+                  <div className="w-7 h-7" style={{ color: "var(--ink)" }}>{CAP_ICONS[i]}</div>
+                </div>
+                <div className="serif ja-text lang-fade" style={{ color: "var(--ink)", fontSize: "16px", lineHeight: 1.5, fontWeight: 500 }}>
+                  {T(it.label, lang)}
+                </div>
+                <div className="hairline mt-4 mb-4 max-w-[40px]"></div>
+                <p className="sans ja-text mt-auto pt-2 lang-fade" style={{ color: "var(--ink-soft)", fontSize: "12.5px", lineHeight: 1.85 }}>
+                  {T(it.desc, lang)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  /* ============================================================
+     SCOPE
+     ============================================================ */
+
+  function Scope() {
+    const ref = useReveal();
+    const { lang } = useLang();
+    const s = STR.scope;
+
+    return (
+      <section ref={ref} id="scope" className="py-28 md:py-48 px-6 md:px-12" style={{ background: "var(--paper)" }}>
+        <div className="max-w-[1100px] mx-auto">
+
+          <SectionLabel kanji={s.kanji} en={s.en} jp={s.label} />
+
+          <div className="reveal delay-1 mt-20 md:mt-28 text-center">
+            <div className="mono text-[10px] tracking-[0.32em] mb-6 lang-fade" style={{ color: "var(--ink-faint)" }}>{T(s.sidekick, lang)}</div>
+            <h2 className="serif ja-text lang-fade" style={{ color: "var(--ink)", fontSize: "clamp(40px, 5.5vw, 72px)", lineHeight: 1.25, fontWeight: 500, letterSpacing: "0.02em" }}>
+              {T(s.titlePre, lang)}<span style={{ color: "var(--vermilion)" }}>{T(s.titleAcc, lang)}</span>{T(s.titlePost, lang)}
+            </h2>
+            <p className="serif ja-text mt-10 max-w-[640px] mx-auto lang-fade" style={{ color: "var(--ink-soft)", fontSize: "clamp(17px, 1.4vw, 21px)", lineHeight: 1.85, fontWeight: 400 }}>
+              {T(s.sub, lang)}
+            </p>
+          </div>
+
+          <div className="reveal delay-2 mt-24 md:mt-32 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-0">
+
+            <div className="p-10 md:p-14" style={{ background: "var(--ink)", color: "var(--paper)" }}>
+              <div className="flex items-baseline gap-4 mb-10">
+                <span className="serif" style={{ color: "var(--vermilion)", fontSize: "32px", lineHeight: 1, fontWeight: 500 }}>○</span>
+                <div>
+                  <div className="mono text-[10px] tracking-[0.24em]" style={{ color: "rgba(245,243,238,0.5)" }}>IN SCOPE</div>
+                  <div className="serif mt-1.5 lang-fade" style={{ fontSize: "20px", fontWeight: 500 }}>{T(s.inLabel, lang)}</div>
+                </div>
+              </div>
+              <ul className="space-y-5 lang-fade">
+                {T(s.inItems, lang).map((it, i) => (
+                  <li key={i} className="flex items-baseline gap-5 sans ja-text" style={{ fontSize: "15px", lineHeight: 1.6 }}>
+                    <span className="mono" style={{ color: "var(--vermilion)", fontSize: "10px" }}>0{i+1}</span>
+                    <span>{it}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="p-10 md:p-14" style={{ background: "var(--paper-deep)" }}>
+              <div className="flex items-baseline gap-4 mb-10">
+                <span className="serif" style={{ color: "var(--ink-faint)", fontSize: "32px", lineHeight: 1, fontWeight: 300 }}>×</span>
+                <div>
+                  <div className="mono text-[10px] tracking-[0.24em]" style={{ color: "var(--ink-faint)" }}>OUT OF SCOPE</div>
+                  <div className="serif mt-1.5 lang-fade" style={{ color: "var(--ink-soft)", fontSize: "20px", fontWeight: 400 }}>{T(s.outLabel, lang)}</div>
+                </div>
+              </div>
+              <ul className="space-y-5 lang-fade">
+                {T(s.outItems, lang).map((it, i) => (
+                  <li key={i} className="flex items-baseline gap-5 sans ja-text" style={{ color: "var(--ink-faint)", fontSize: "15px", lineHeight: 1.6 }}>
+                    <span className="mono" style={{ color: "var(--ink-faint)", fontSize: "10px" }}>0{i+1}</span>
+                    <span style={{ textDecoration: "line-through", textDecorationColor: "var(--rule)", textDecorationThickness: "1px" }}>{it}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Image #3 — Agent workflow */}
+          <div className="reveal delay-3 mt-16 md:mt-20">
+            <ProductImage src="images/agent-workflow.png" label={s.ph3Title} bg="var(--paper)" />
+          </div>
+
+          <p className="reveal sans text-center mt-12 ja-text lang-fade" style={{ color: "var(--ink-faint)", fontSize: "13px", letterSpacing: "0.08em" }}>
+            {T(s.footer, lang)}
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  /* ============================================================
+     PATHS
+     ============================================================ */
+
+  function Paths() {
+    const ref = useReveal();
+    const { lang } = useLang();
+    const p = STR.paths;
+    const NUMS = [
+      <CountUp to={394} suffix="%" />,
+      <><CountUp to={818} /><span className="serif" style={{fontSize:"0.5em", marginLeft:"0.15em"}}>{T(STR.hero.manyen, lang)}</span></>,
+      <><CountUp to={339} /><span className="serif" style={{fontSize:"0.5em", marginLeft:"0.15em"}}>{lang === "ja" ? "万人" : "万人"}</span></>,
+    ];
+
+    return (
+      <section ref={ref} id="paths" className="py-24 md:py-40 px-6 md:px-12" style={{ background: "var(--paper-deep)" }}>
+        <div className="max-w-[1240px] mx-auto">
+          <SectionLabel kanji={p.kanji} en={p.en} jp={p.label} />
+
+          <div className="mt-16 md:mt-20 grid grid-cols-1 md:grid-cols-3 gap-px" style={{ background: "var(--rule)", border: "1px solid var(--rule)" }}>
+            {p.items.map((it, i) => (
+              <div key={i} className="reveal p-8 md:p-10 flex flex-col" style={{ background: "var(--paper)", transitionDelay: `${i*100}ms`, minHeight: "420px" }}>
+                <div className="flex items-baseline justify-between mb-10">
+                  <span className="mono text-[10px] tracking-[0.24em]" style={{ color: "var(--ink-faint)" }}>PATH 0{i+1}</span>
+                  <span className="serif" style={{ color: "var(--vermilion)", fontSize: "20px", fontWeight: 500 }}>{it.kanji}</span>
+                </div>
+
+                <div className="serif ja-text lang-fade" style={{ color: "var(--ink)", fontSize: "18px", fontWeight: 500, lineHeight: 1.5 }}>
+                  {T(it.label, lang)}
+                </div>
+
+                <div className="hairline my-8" />
+
+                <div className="serif font-medium tnum stat-num" style={{ color: "var(--ink)", fontSize: "clamp(46px, 5vw, 68px)", lineHeight: 0.95 }}>
+                  {NUMS[i]}
+                </div>
+
+                <div className="sans mt-5 ja-text lang-fade" style={{ color: "var(--ink-soft)", fontSize: "12.5px", lineHeight: 1.7 }}>
+                  {T(it.cap, lang)}
+                </div>
+
+                <div className="mt-auto pt-10">
+                  <div className="hairline mb-5 max-w-[24px]" style={{ background: "var(--vermilion)", height: "2px" }} />
+                  <p className="serif ja-text lang-fade" style={{ color: "var(--ink)", fontSize: "16px", lineHeight: 1.6, fontWeight: 500 }}>
+                    {T(it.tagline, lang)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Image #4 — student demo grid */}
+          <div className="reveal mt-16 md:mt-20">
+            <ProductImage src="images/demo-grid.png" label={p.ph4Title} bg="var(--paper)" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  /* ============================================================
+     COURSE INFO
+     ============================================================ */
+
+  function CourseInfo() {
+    const ref = useReveal();
+    const { lang } = useLang();
+    const i = STR.info;
+    return (
+      <section ref={ref} id="info" className="py-24 md:py-40 px-6 md:px-12" style={{ background: "var(--paper)" }}>
+        <div className="max-w-[1100px] mx-auto">
+          <SectionLabel kanji={i.kanji} en={i.en} jp={i.label} />
+
+          <div className="reveal delay-1 mt-16 md:mt-20" style={{ borderTop: "1px solid var(--ink)" }}>
+            {i.rows.map((r, idx) => (
+              <div key={idx} className="grid grid-cols-12 gap-4 md:gap-8 py-7 md:py-9" style={{ borderBottom: "1px solid var(--rule)" }}>
+                <div className="col-span-12 md:col-span-3">
+                  <div className="mono text-[10px] tracking-[0.24em] mb-1.5" style={{ color: "var(--ink-faint)" }}>{r.en}</div>
+                  <div className="serif lang-fade" style={{ color: "var(--ink)", fontSize: "16px", fontWeight: 500 }}>{T(r.k, lang)}</div>
+                </div>
+                <div className="col-span-12 md:col-span-9">
+                  <div className="serif ja-text lang-fade" style={{ color: "var(--ink)", fontSize: "clamp(18px, 1.6vw, 22px)", lineHeight: 1.7, fontWeight: 400 }}>
+                    {T(r.v, lang)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  /* ============================================================
+     CLOSING
+     ============================================================ */
+
+  function Closing() {
+    const ref = useReveal();
+    const { lang } = useLang();
+    const c = STR.closing;
+    return (
+      <section ref={ref} id="apply" className="py-28 md:py-48 px-6 md:px-12" style={{ background: "var(--ink)", color: "var(--paper)" }}>
+        <div className="max-w-[1100px] mx-auto">
+
+          <div className="reveal flex items-baseline gap-6 mb-16 flex-wrap">
+            <span className="serif" style={{ color: "var(--vermilion)", fontSize: "28px", lineHeight: 1, fontWeight: 500 }}>{c.kanji}</span>
+            <span className="mono text-[11px] tracking-[0.28em]" style={{ color: "rgba(245,243,238,0.5)" }}>{c.en}</span>
+            <div className="hairline flex-1 max-w-[80px]" style={{ background: "rgba(245,243,238,0.3)" }} />
+            <span className="sans text-[12px] tracking-[0.16em] lang-fade" style={{ color: "rgba(245,243,238,0.7)" }}>{T(c.label, lang)}</span>
+          </div>
+
+          <h2 className="reveal delay-1 serif ja-text lang-fade" style={{ fontSize: "clamp(34px, 4.6vw, 60px)", lineHeight: 1.35, fontWeight: 500, letterSpacing: "0.02em" }}>
+            {T(c.title, lang)}
+          </h2>
+
+          <div className="reveal delay-2 grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 mt-20">
+            <div>
+              <div className="mono text-[10px] tracking-[0.24em] mb-3" style={{ color: "rgba(245,243,238,0.5)" }}>{T(c.colALabel, lang)}</div>
+              <p className="serif ja-text lang-fade" style={{ fontSize: "18px", lineHeight: 1.85, color: "rgba(245,243,238,0.9)", fontWeight: 400 }}>
+                {T(c.colA, lang)}
+              </p>
+            </div>
+            <div>
+              <div className="mono text-[10px] tracking-[0.24em] mb-3" style={{ color: "var(--vermilion)" }}>{T(c.colBLabel, lang)}</div>
+              <p className="serif ja-text lang-fade" style={{ fontSize: "18px", lineHeight: 1.85, color: "var(--paper)", fontWeight: 400 }}>
+                {T(c.colB, lang)}
+              </p>
+            </div>
+          </div>
+
+          <div className="reveal delay-3 mt-24 md:mt-32">
+            <div className="hairline mb-12" style={{ background: "rgba(245,243,238,0.2)" }}></div>
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-10">
+              <div>
+                <div className="mono text-[10px] tracking-[0.24em]" style={{ color: "rgba(245,243,238,0.5)" }}>{T(c.nextStep, lang)}</div>
+                <div className="serif mt-3 ja-text lang-fade" style={{ fontSize: "clamp(24px, 2.4vw, 36px)", lineHeight: 1.4, fontWeight: 500 }}>
+                  {T(c.cta, lang)}
+                </div>
+              </div>
+              <a href="#" className="cta sans lang-fade" onClick={(e) => e.preventDefault()}>
+                {T(STR.hero.ctaApply, lang)}
+                <span className="arrow">→</span>
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    );
+  }
+
+  /* ============================================================
+     FOOTER
+     ============================================================ */
+
+  function Footer() {
+    const { lang } = useLang();
+    return (
+      <footer className="px-6 md:px-12 py-14" style={{ background: "var(--paper)", borderTop: "1px solid var(--rule)" }}>
+        <div className="max-w-[1240px] mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-baseline gap-4 lang-fade">
+            <span className="serif text-[16px]" style={{ color: "var(--ink)" }}>{T(STR.footer.title, lang)}</span>
+            <span className="mono text-[10px] tracking-[0.18em]" style={{ color: "var(--ink-faint)" }}>{T(STR.footer.meta, lang)}</span>
+          </div>
+          <div className="sans text-[11px] tracking-[0.14em] lang-fade" style={{ color: "var(--ink-faint)" }}>
+            {T(STR.footer.copy, lang)}
+          </div>
+        </div>
+      </footer>
+    );
+  }
+
+  /* ============================================================
+     APP
+     ============================================================ */
+
+  function App() {
+    const [lang, setLangState] = useState("ja");
+
+    const setLang = useCallback((next) => {
+      if (next === lang) return;
+      // fade out
+      document.body.classList.add("lang-switching");
+      setTimeout(() => {
+        setLangState(next);
+        document.body.setAttribute("data-lang", next);
+        document.documentElement.setAttribute("lang", next === "ja" ? "ja" : "zh");
+        // fade in next frame
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            document.body.classList.remove("lang-switching");
+          });
+        });
+      }, 280);
+    }, [lang]);
+
+    return (
+      <LangCtx.Provider value={{ lang, setLang }}>
+        <TopBar />
+        <main>
+          <Hero />
+          <WhyNow />
+          <Curriculum />
+          <Capabilities />
+          <Scope />
+          <Paths />
+          <CourseInfo />
+          <Closing />
+        </main>
+        <Footer />
+      </LangCtx.Provider>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
